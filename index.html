@@ -1,0 +1,87 @@
+<html lang="en">
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0"></script>
+ </head>
+
+  <body>
+    <video autoplay="true" id="videoElement" playsinline="" style="-moz-transform:scaleX(-1);-o-transform:scaleX(-1);-webkit-transform:scaleX(-1);transform:scaleX(-1);display:none;"></video>
+    <canvas style="width:100vw; height:100vh; display:none;" id="backBuffer"></canvas>
+    <canvas style="width:100vw; height:100vh;" id="frontBuffer"></canvas>
+  </body>
+  <script>
+
+    var video = document.querySelector("#videoElement");
+    var backbuffer = document.querySelector("#backBuffer");
+    var frontbuffer = document.querySelector("#frontBuffer");
+
+    async function SetupLoadAndRunInference(videoPending) {
+
+        console.log("waiting for camera video...");
+        await videoPending;
+
+        console.log("loading ResNet50 model...");
+        const net = await bodyPix.load({
+            architecture: 'ResNet50',
+            outputStride: 16, // 16, 32
+            multiplier: 1,
+            quantBytes: 4 // 4, 2, 1 (best/largest = 4)
+        });
+        console.log("loaded");
+        async function RunInference() {
+
+            const opacity = 1;
+            const flipHorizontal = false;
+            const maskBlurAmount = 0;
+            while (true) {
+                const ctx = backbuffer.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+
+                const segmentation = await net.segmentPerson(backbuffer, {
+                    internalResolution: 'medium',
+                    segmentationThreshold: 0.7,
+                    maxDetections: 1,
+                });
+                const coloredPartImage = bodyPix.toMask(segmentation,
+                                                        foreground = { r: 0, g: 0, b: 0, a: 0 },
+                                                        background = { r: 0, g: 255, b: 0, a: 255 });
+                bodyPix.drawMask(
+                    frontbuffer, backbuffer, coloredPartImage, opacity, maskBlurAmount,
+                    flipHorizontal);
+            }
+        }
+        RunInference();
+    }
+    var constraints = {
+        video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+        }
+    };
+
+    if (navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(function(stream) {
+                console.log("Found camera...");
+                var videoPending = new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.width = video.videoWidth;
+                        video.height = video.videoHeight;
+                        backbuffer.height = video.height;
+                        backbuffer.width = video.width;
+                        //console.log("video width = " + video.videoWidth);
+                        resolve(videoElement);
+                    };
+                });
+
+                video.srcObject = stream;
+
+                SetupLoadAndRunInference(videoPending);
+            })
+            .catch(function(err0r) {
+                console.log("Something went wrong!");
+            });
+    }
+
+  </script>
+</html>
