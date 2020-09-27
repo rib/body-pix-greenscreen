@@ -7,3 +7,6 @@ The idea is that something like this could then be composited within OBS as if y
 in front of a real greenscreen.
 
 Live demo at https://rib.github.io/body-pix-greenscreen/
+
+(Note it takes a little while to load the model after enabling your cam and doesn't currently give
+any feedback until it's loaded)
