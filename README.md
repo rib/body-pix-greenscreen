@@ -6,3 +6,4 @@ to segment your body from your background and then simply clears the background 
 The idea is that something like this could then be composited within OBS as if you were standing
 in front of a real greenscreen.
 
+Live demo at https://rib.github.io/body-pix-greenscreen/
